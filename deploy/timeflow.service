@@ -1,0 +1,17 @@
+[Unit]
+Description=TimeFlow Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=timeflow
+WorkingDirectory=/opt/TimeFLow
+EnvironmentFile=/opt/TimeFLow/.env
+ExecStart=/opt/TimeFLow/venv/bin/python3 /opt/TimeFLow/main.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
