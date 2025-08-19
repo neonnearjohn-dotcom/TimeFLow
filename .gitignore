@@ -32,8 +32,8 @@ ENV/
 # venv
 
 # Environment variables
-# .env
-# env.local
+.env
+env.local
 .env.*.local
 
 # Firebase/Google Cloud credentials
@@ -64,4 +64,3 @@ Thumbs.db
 # Project specific
 bot.log
 temp/
-data/

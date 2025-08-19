@@ -1,21 +1,16 @@
-"""
-Конфигурация бота
-"""
+"""Конфигурация бота"""
 import os
-from dotenv import load_dotenv
+from utils.env_loader import load_env
 
-# Загружаем переменные окружения из .env файла
-load_dotenv()
+load_env()
 
-# Токен бота от @BotFather
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN не найден в переменных окружения!")
 
-# Путь к файлу с ключами Firebase (для Firestore)
 GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
 if not GOOGLE_APPLICATION_CREDENTIALS:
     raise ValueError("GOOGLE_APPLICATION_CREDENTIALS не найден в переменных окружения!")
 
-# ID проекта Firestore (можно указать явно или получить из credentials)
-FIRESTORE_PROJECT_ID = os.getenv('FIRESTORE_PROJECT_ID', None)
+FIREBASE_PROJECT_ID = os.getenv('FIREBASE_PROJECT_ID')
+

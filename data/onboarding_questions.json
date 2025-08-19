@@ -1,0 +1,12 @@
+{
+  "categories": {
+    "general": {
+      "title": "General",
+      "emoji": "📋",
+      "questions": []
+    }
+  },
+  "constraints_questions": {
+    "general": []
+  }
+}

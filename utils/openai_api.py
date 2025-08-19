@@ -1,14 +1,13 @@
-"""
-Модуль для работы с OpenAI API
-"""
+"""Модуль для работы с OpenAI API"""
 import os
 from typing import Optional, Dict, List, Tuple, Any
 import logging
 import json
 import re
-from dotenv import load_dotenv
+import httpx
+from utils.env_loader import load_env
 
-load_dotenv()
+load_env()
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +30,7 @@ class OpenAIAssistant:
         self.client = None
         self.is_configured = False
         self._client_closed = False  # Флаг для отслеживания закрытия клиента
+        self.proxy = os.getenv('OPENAI_PROXY')
         
         # Системный промпт
         self.system_prompt = """Ты — встроенный ИИ-ассистент проекта TimeFlow Bot.
@@ -82,8 +82,8 @@ class OpenAIAssistant:
         
         if self.api_key and OPENAI_AVAILABLE:
             try:
-                # Создаем клиент без дополнительных параметров, чтобы избежать конфликтов
-                self.client = AsyncOpenAI(api_key=self.api_key)
+                http_client = httpx.AsyncClient(proxy=self.proxy) if self.proxy else httpx.AsyncClient()
+                self.client = AsyncOpenAI(api_key=self.api_key, http_client=http_client)
                 self.is_configured = True
                 logger.info(f"OpenAI клиент инициализирован. Модель: {self.model}")
             except Exception as e:
