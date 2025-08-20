@@ -3,7 +3,11 @@
 """
 import asyncio
 import logging
+import os
 import sys
+from venv import logger
+
+from pytest import Config
 from config import BOT_TOKEN
 
 from aiogram import Bot, Dispatcher
@@ -23,11 +27,67 @@ from utils.focus_scheduler import focus_scheduler
 # Импортируем обработчики
 from handlers import start, menu, trackers, focus, checklist, profile, assistant, settings, assistant_onboarding, assistant_plan
 
+from utils.logging import setup_json_logging, get_logger, set_request_id, setup_logging
+
+import signal
+from typing import Optional
+from google.cloud import firestore
+
+from services.pomodoro_service import PomodoroService
+from tasks.pomodoro_recovery import recovery_pass, start_scheduler
+
+shutdown_event: Optional[asyncio.Event] = None
+scheduler_task: Optional[asyncio.Task] = None
+
+setup_json_logging("INFO")
+log = get_logger(__name__)
+log.info("Starting TimeFlow bot")
+
+async def send_notification(user_id: str, message: str) -> None:
+    """Отправка уведомления пользователю через бота."""
+    # TODO: заменить на реальную отправку через bot.send_message
+    logger.info(
+        "Sending notification",
+        extra={
+            "user_id": user_id,
+            "message": message[:50],  # Первые 50 символов для логов
+        }
+    )
+    # В реальности раскомментировать и передать bot:
+    # await bot.send_message(chat_id=user_id, text=message)
+
+def CorrelationMiddleware():
+    raise NotImplementedError
 
 async def main():
     """
     Основная функция для запуска бота
     """
+    """Основная точка входа приложения."""
+    global shutdown_event, scheduler_task
+    # Настройка логирования
+    log_level = os.getenv("LOG_LEVEL", "INFO")
+    setup_logging(level=log_level)
+    
+    logger.info("Starting TimeFlow Bot")
+    
+    # Инициализация конфига
+    config = Config()
+    
+    # Инициализация бота
+    bot = Bot(
+        token=config.bot_token,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+    )
+    
+    db = firestore.Client()
+    pomodoro_service = PomodoroService(db)
+
+    # Инициализация диспетчера
+    dp = Dispatcher()
+    
+    # Подключение middleware
+    dp.update.middleware(CorrelationMiddleware())
     # Настройка логирования
     logging.basicConfig(
         level=logging.INFO,
@@ -81,11 +141,39 @@ async def main():
         from handlers import focus as focus_handlers
         focus_handlers.focus_service = focus_service
         logger.info("FocusService инъецирован в handlers.focus")
+
+    
         
     except Exception as e:
         logger.error(f"Ошибка инициализации Focus модуля: {e}", exc_info=True)
         focus_service = None
     
+# Recovery pass при старте
+    logger.info("Running Pomodoro recovery pass")
+    await recovery_pass(
+        service=pomodoro_service,
+        notify=send_notification  # или передать lambda с bot.send_message
+    )
+    
+    # Запуск фонового scheduler
+    shutdown_event = asyncio.Event()
+    scheduler_task = asyncio.create_task(
+        start_scheduler(
+            service=pomodoro_service,
+            notify=send_notification,
+            interval_sec=30,
+            shutdown_event=shutdown_event
+        )
+    )
+    
+    # Обработка сигналов для graceful shutdown
+    def signal_handler(sig, frame):
+        logger.info(f"Received signal {sig}, initiating shutdown")
+        shutdown_event.set()
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     # --- ПОДКЛЮЧЕНИЕ РОУТЕРОВ ---
     dp.include_router(start.router)
     dp.include_router(menu.router)
@@ -104,21 +192,24 @@ async def main():
     logger.info("Бот запущен и готов к работе!")
     
     try:
-        # Запускаем long polling
-        await dp.start_polling(bot)
-    except Exception as e:
-        logger.error(f"Критическая ошибка в работе бота: {e}", exc_info=True)
+        # Запуск polling или webhook в зависимости от ENV
+        if config.env == "dev":
+            logger.info("Starting in polling mode (dev)")
+            await dp.start_polling(bot)
+        else:
+            logger.info("Starting in webhook mode (prod)")
+            # webhook setup будет здесь
+            pass
     finally:
-        # Останавливаем планировщик
-        try:
-            await focus_scheduler.stop()
-            logger.info("Focus планировщик остановлен")
-        except Exception as e:
-            logger.error(f"Ошибка при остановке планировщика: {e}")
+        # Graceful shutdown
+        logger.info("Shutting down...")
+        shutdown_event.set()
         
-        # Корректно закрываем соединение
+        if scheduler_task and not scheduler_task.done():
+            await scheduler_task
+        
         await bot.session.close()
-        logger.info("Бот остановлен")
+        logger.info("Bot stopped")
 
 
 if __name__ == "__main__":
