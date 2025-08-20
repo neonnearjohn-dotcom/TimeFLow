@@ -23,6 +23,11 @@ from utils.focus_scheduler import focus_scheduler
 # Импортируем обработчики
 from handlers import start, menu, trackers, focus, checklist, profile, assistant, settings, assistant_onboarding, assistant_plan
 
+from utils.logging import setup_json_logging, get_logger, set_request_id
+
+setup_json_logging("INFO")
+log = get_logger(__name__)
+log.info("Starting TimeFlow bot")
 
 async def main():
     """
