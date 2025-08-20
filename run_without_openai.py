@@ -1,6 +1,7 @@
 """
 Скрипт для запуска бота без модуля OpenAI
 """
+
 import os
 import shutil
 from datetime import datetime

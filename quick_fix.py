@@ -1,6 +1,7 @@
 """
 Быстрое исправление модуля ассистента - запуск за 10 секунд
 """
+
 import os
 
 # Исправляем states/assistant.py
@@ -121,14 +122,14 @@ class OpenAIAssistant:
 '''
 
 # Создаем/обновляем файлы
-os.makedirs('states', exist_ok=True)
-os.makedirs('utils', exist_ok=True)
+os.makedirs("states", exist_ok=True)
+os.makedirs("utils", exist_ok=True)
 
-with open('states/assistant.py', 'w', encoding='utf-8') as f:
+with open("states/assistant.py", "w", encoding="utf-8") as f:
     f.write(states_content)
 print("✅ Исправлен states/assistant.py")
 
-with open('utils/openai_api.py', 'w', encoding='utf-8') as f:
+with open("utils/openai_api.py", "w", encoding="utf-8") as f:
     f.write(openai_content)
 print("✅ Исправлен utils/openai_api.py")
 

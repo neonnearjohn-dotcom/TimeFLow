@@ -1,4 +1,5 @@
 """Basic environment self-check for TimeFlow."""
+
 from __future__ import annotations
 
 import os
@@ -90,4 +91,3 @@ def main() -> int:
 
 if __name__ == "__main__":  # pragma: no cover
     sys.exit(main())
-

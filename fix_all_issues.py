@@ -1,14 +1,16 @@
 """
 Полное исправление всех проблем с ассистентом
 """
+
 import os
 import shutil
 
+
 def fix_everything():
     """Исправляет все известные проблемы"""
-    
+
     print("🔧 Комплексное исправление модуля ассистента...\n")
-    
+
     # 1. Исправляем OpenAI API
     print("1️⃣ Исправление utils/openai_api.py...")
     openai_content = '''"""
@@ -61,64 +63,66 @@ class OpenAIAssistant:
         """Проверяет доступность API"""
         return self.is_configured
 '''
-    
-    os.makedirs('utils', exist_ok=True)
-    with open('utils/openai_api.py', 'w', encoding='utf-8') as f:
+
+    os.makedirs("utils", exist_ok=True)
+    with open("utils/openai_api.py", "w", encoding="utf-8") as f:
         f.write(openai_content)
     print("✅ Исправлен utils/openai_api.py")
-    
+
     # 2. Исправляем main.py
     print("\n2️⃣ Исправление main.py...")
-    with open('main.py', 'r', encoding='utf-8') as f:
+    with open("main.py", "r", encoding="utf-8") as f:
         main_content = f.read()
-    
+
     # Исправляем импорт DefaultBotProperties
-    if 'DefaultBotProperties' not in main_content:
+    if "DefaultBotProperties" not in main_content:
         main_content = main_content.replace(
-            'from aiogram.enums import ParseMode',
-            'from aiogram.enums import ParseMode\nfrom aiogram.client.default import DefaultBotProperties'
+            "from aiogram.enums import ParseMode",
+            "from aiogram.enums import ParseMode\nfrom aiogram.client.default import DefaultBotProperties",
         )
-    
+
     # Исправляем инициализацию бота
-    old_bot = 'bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)'
-    new_bot = '''bot = Bot(
+    old_bot = "bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)"
+    new_bot = """bot = Bot(
         token=BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-    )'''
-    
+    )"""
+
     if old_bot in main_content:
         main_content = main_content.replace(old_bot, new_bot)
-    
+
     # Убеждаемся, что assistant импортирован и подключен
-    if '# , assistant' in main_content:
-        main_content = main_content.replace('# , assistant', ', assistant')
-    if '# dp.include_router(assistant.router)' in main_content:
-        main_content = main_content.replace('# dp.include_router(assistant.router)', 'dp.include_router(assistant.router)')
-    
-    with open('main.py', 'w', encoding='utf-8') as f:
+    if "# , assistant" in main_content:
+        main_content = main_content.replace("# , assistant", ", assistant")
+    if "# dp.include_router(assistant.router)" in main_content:
+        main_content = main_content.replace(
+            "# dp.include_router(assistant.router)", "dp.include_router(assistant.router)"
+        )
+
+    with open("main.py", "w", encoding="utf-8") as f:
         f.write(main_content)
     print("✅ Исправлен main.py")
-    
+
     # 3. Проверяем/создаем handlers/assistant.py
     print("\n3️⃣ Проверка handlers/assistant.py...")
-    if not os.path.exists('handlers/assistant.py'):
+    if not os.path.exists("handlers/assistant.py"):
         print("❌ handlers/assistant.py не найден! Создаю простую версию...")
         create_simple_assistant()
     else:
         # Проверяем, есть ли функция handle_assistant_menu
-        with open('handlers/assistant.py', 'r', encoding='utf-8') as f:
+        with open("handlers/assistant.py", "r", encoding="utf-8") as f:
             content = f.read()
-        
-        if 'handle_assistant_menu' not in content:
+
+        if "handle_assistant_menu" not in content:
             print("⚠️ handle_assistant_menu не найдена! Заменяю на простую версию...")
             create_simple_assistant()
         else:
             print("✅ handlers/assistant.py существует")
-    
+
     # 4. Создаем корректный handlers/menu.py если нужно
     print("\n4️⃣ Проверка handlers/menu.py...")
     fix_menu_handler()
-    
+
     print("\n✅ Все исправлено!")
     print("\n🚀 Перезапустите бота: python main.py")
     print("\n💡 Ассистент будет работать в демо-режиме.")
@@ -199,8 +203,8 @@ async def exit_assistant(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.answer("Вышли из ассистента")
 '''
-    
-    with open('handlers/assistant.py', 'w', encoding='utf-8') as f:
+
+    with open("handlers/assistant.py", "w", encoding="utf-8") as f:
         f.write(content)
     print("✅ Создан простой handlers/assistant.py")
 
@@ -264,8 +268,8 @@ async def handle_settings(message: Message):
         parse_mode="HTML"
     )
 '''
-    
-    with open('handlers/menu.py', 'w', encoding='utf-8') as f:
+
+    with open("handlers/menu.py", "w", encoding="utf-8") as f:
         f.write(content)
     print("✅ Исправлен handlers/menu.py")
 
@@ -276,9 +280,9 @@ if __name__ == "__main__":
     print("1. Ошибку OpenAI 'proxies'")
     print("2. Предупреждение Bot deprecated")
     print("3. Проблему с обработчиком ассистента\\n")
-    
+
     response = input("Начать исправление? (y/n): ")
-    if response.lower() == 'y':
+    if response.lower() == "y":
         fix_everything()
     else:
         print("Отменено")
