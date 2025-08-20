@@ -79,12 +79,6 @@ async def show_user_profile(user_id: int, answer_method):
         
         text += "\n"
         
-        # Очки
-        balance = profile.get('points_balance', 0)
-        total_earned = profile.get('total_points_earned', 0)
-        text += f"💰 <b>Баланс очков:</b> {balance}\n"
-        text += f"💎 <b>Всего заработано:</b> {total_earned}\n\n"
-        
         # Достижения
         achievements_count = profile.get('achievements_count', 0)
         text += f"🏆 <b>Достижений получено:</b> {achievements_count}\n\n"
@@ -110,7 +104,7 @@ async def show_user_profile(user_id: int, answer_method):
         if recent:
             text += "<b>🕐 Последние действия:</b>\n"
             for action in recent[:3]:
-                text += f"• {action['name']} (+{action['points']} очков)\n"
+                text += f"• {action['name']}\n"
         
         await answer_method(
             text,
@@ -300,58 +294,6 @@ async def show_achievements_progress(callback: CallbackQuery):
         )
     except Exception as e:
         logger.error(f"Ошибка при показе прогресса: {e}")
-        await callback.answer(ERROR_MESSAGES['unknown_error'], show_alert=True)
-    
-    await callback.answer()
-
-
-# === ИСТОРИЯ ОЧКОВ ===
-
-@router.callback_query(F.data == "points_history")
-async def show_points_history(callback: CallbackQuery):
-    """Показывает историю начисления очков"""
-    user_id = callback.from_user.id
-    
-    try:
-        history = await gamification_db.get_points_history(user_id, limit=15)
-        balance = await gamification_db.get_points_balance(user_id)
-        
-        text = f"💰 <b>История очков</b>\n\n"
-        text += f"Текущий баланс: {balance} очков\n\n"
-        
-        if not history:
-            text += "История пока пуста.\n"
-            text += "Выполняй задачи и получай очки! 💪"
-        else:
-            text += "<b>Последние начисления:</b>\n"
-            
-            reason_names = {
-                'habit_completed': '✅ Привычка',
-                'focus_session_complete': '🎯 Фокус',
-                'task_completed': '📋 Задача',
-                'achievement_unlocked': '🏆 Достижение',
-                'bad_habit_day': '💪 День без вредной привычки',
-                'habit_streak_bonus': '🔥 Бонус за streak'
-            }
-            
-            for record in history:
-                reason = record.get('reason', '')
-                points = record.get('points', 0)
-                timestamp = record.get('timestamp')
-                
-                action_name = reason_names.get(reason, 'Действие')
-                
-                if timestamp:
-                    time_str = timestamp.strftime('%d.%m %H:%M')
-                    text += f"{time_str} | {action_name} | +{points}\n"
-        
-        await callback.message.edit_text(
-            text,
-            reply_markup=get_back_to_profile_keyboard(),
-            parse_mode="HTML"
-        )
-    except Exception as e:
-        logger.error(f"Ошибка при показе истории очков: {e}")
         await callback.answer(ERROR_MESSAGES['unknown_error'], show_alert=True)
     
     await callback.answer()

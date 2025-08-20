@@ -24,7 +24,6 @@ from keyboards.main_menu import get_main_menu_keyboard
 from states.assistant import AssistantStates
 from utils.openai_api import OpenAIAssistant
 from utils.messages import ERROR_MESSAGES
-from utils.achievements import POINTS_TABLE
 
 # Создаем роутер
 router = Router()
@@ -371,18 +370,8 @@ async def process_scenario(callback: CallbackQuery, state: FSMContext):
                     response_text,
                     scenario=scenario
                 )
-                
-                # Начисляем очки за использование ассистента (раз в день)
-                last_use = await assistant_db.get_last_use_date(user_id)
-                today = datetime.now(timezone.utc).date()
-                
+
                 if not last_use or last_use.date() < today:
-                    await gamification_db.add_points(
-                        user_id,
-                        5,
-                        'assistant_daily_use',
-                        {'scenario': scenario}
-                    )
                     await assistant_db.update_last_use_date(user_id)
             else:
                 response_text = ASSISTANT_MESSAGES['error_api']

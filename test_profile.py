@@ -28,7 +28,6 @@ def get_test_keyboard():
     buttons = [
         KeyboardButton(text="👤 Профиль"),
         KeyboardButton(text="🔍 Проверить БД"),
-        KeyboardButton(text="💰 Добавить очки"),
         KeyboardButton(text="🏆 Тест достижения")
     ]
     
@@ -67,37 +66,6 @@ async def check_db(message: Message):
             f"❌ Ошибка подключения к БД:\n{str(e)}"
         )
 
-@router.message(F.text == "💰 Добавить очки")
-async def add_test_points(message: Message):
-    """Добавляет тестовые очки"""
-    try:
-        from database.firestore_db import FirestoreDB
-        from database.gamification_db import GamificationDB
-        
-        db = FirestoreDB()
-        gamification_db = GamificationDB(db.db)
-        
-        # Добавляем 100 тестовых очков
-        success, balance = await gamification_db.add_points(
-            message.from_user.id,
-            100,
-            'test_points',
-            {'test': True}
-        )
-        
-        if success:
-            await message.answer(
-                f"✅ Добавлено 100 очков!\n"
-                f"Новый баланс: {balance}"
-            )
-        else:
-            await message.answer("❌ Не удалось добавить очки")
-            
-    except Exception as e:
-        await message.answer(
-            f"❌ Ошибка при добавлении очков:\n{str(e)}"
-        )
-
 @router.message(F.text == "🏆 Тест достижения")
 async def test_achievement(message: Message):
     """Тестирует получение достижения"""
@@ -109,15 +77,14 @@ async def test_achievement(message: Message):
         gamification_db = GamificationDB(db.db)
         
         # Разблокируем первое достижение
-        success, points = await gamification_db.unlock_achievement(
+        success = await gamification_db.unlock_achievement(
             message.from_user.id,
             'first_habit'
         )
-        
+
         if success:
             await message.answer(
-                f"🎉 Получено достижение 'Первый шаг'!\n"
-                f"Заработано очков: {points}"
+                "🎉 Получено достижение 'Первый шаг'!"
             )
         else:
             await message.answer("❌ Не удалось получить достижение")
@@ -143,8 +110,6 @@ async def show_profile(message: Message):
             user_data = {
                 'username': message.from_user.username,
                 'full_name': message.from_user.full_name,
-                'points_balance': 0,
-                'total_points_earned': 0,
                 'achievements_count': 0
             }
             await db.create_user(message.from_user.id, user_data)
