@@ -14,7 +14,7 @@ users:
     sudo: ALL=(ALL) NOPASSWD:ALL
     lock_passwd: true
     ssh_authorized_keys:
-      - # <INSERT_SSH_KEY>
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC+fCs0fpDU4+72v7Mj5KXQjFt+7PBuB9iMyWWXUSSqA3S4IZXCwpUw1FXbQIgeoP/FXRqj6F5WqLn3XYTiRjm1GdNYbIHvxOOHL1FtHBT+hNAY7wGTk65UksPUbot8hyc28jO3Ic+Ocse83eYDgdoXe5xnYF1UWb2MsGCtELZVsmabODDxUoE1QLu3JM6TvuC0Mi+JgCEqFEQGXx51lnKJ4HawgL5Kb5JocbYbxB/0q+gvQHqAEbGbxSORUvip0uB7AhEHOgoWiaezO3iXUniZGHcSxjyq4OhRVX+ewvFg9JRsOrPXbkGsFuVS3RS8HdJkCP5NfP6eAcOdyOZSO9OMO8N6I+FugWmamkqYgbcnN/K7jj6P9Ad7932gOs4rEgxok57URzt9DJF9vRQf/Qkm9srI0CgKSLtgcT5k8SV34I/0Gmt7GQhc2q84Q96LAwHTjrhxG4uG999jo20fSuRCckUxuMdH62CnP1nHlsAf8jVu0XP0M4pfLtKBiyYE7rMFFIcYxWaDO+9OnsFgBTxiQG3LTg6bRX6KCNXAEWiBTT9K9mzLobaN9Bg/VDZvs3jlX8XflrCTuZBOQuhAv/7YU3DU++vREWJJrwwZ7Tp1wFy9f/Z+lT+Kxvl4xXtprTBe1h7ajfdyfqAANnKWKbqHfUmLSGzZbeyoBs6pfd/+Kw== neonnear@mail.ru
 
 write_files:
   - path: /etc/systemd/system/timeflow.service
@@ -47,7 +47,7 @@ write_files:
 runcmd:
   - mkdir -p /opt/TimeFLow
   - chown -R timeflow:timeflow /opt/TimeFLow
-  - sudo -u timeflow git clone <REPO_URL> /opt/TimeFLow
+  - sudo -u timeflow git clone https://github.com/neonnearjohn-dotcom/TimeFLow /opt/TimeFLow
   - cd /opt/TimeFLow && sudo -u timeflow python3 -m venv venv
   - cd /opt/TimeFLow && sudo -u timeflow /opt/TimeFLow/venv/bin/pip install --upgrade pip
   - cd /opt/TimeFLow && sudo -u timeflow /opt/TimeFLow/venv/bin/pip install -r requirements.txt
