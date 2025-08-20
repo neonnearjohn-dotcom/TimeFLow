@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -182,7 +182,36 @@ async def test_scheduler_stops_on_shutdown_event():
     
     # Ждём завершения
     await asyncio.wait_for(task, timeout=1.0)
-    
+
     # Проверяем что задача завершена корректно
     assert task.done()
     assert not task.cancelled()
+
+
+@pytest.mark.asyncio
+async def test_notify_failure_resets_status_for_retry(pomodoro_service):
+    session_id = "user999_123"
+    expired_session = PomodoroSession(
+        user_id="user999",
+        status="active",
+        ends_at=datetime.utcnow() - timedelta(minutes=1),
+        version=1,
+    )
+
+    doc_mock = MagicMock()
+    doc_mock.exists = True
+    doc_mock.to_dict.return_value = expired_session.to_dict()
+    doc_ref_mock = MagicMock()
+    doc_ref_mock.get.return_value = doc_mock
+
+    pomodoro_service.db.collection.return_value.document.return_value = doc_ref_mock
+    pomodoro_service.db.transaction.return_value = MagicMock()
+
+    notify = AsyncMock(side_effect=Exception("boom"))
+
+    with patch("asyncio.to_thread", side_effect=lambda f, *args: f(*args)):
+        result = await pomodoro_service.mark_done_and_notify(session_id, notify)
+
+    assert result is False
+    notify.assert_called_once()
+    doc_ref_mock.update.assert_called_with({"status": "active", "updated_at": ANY})

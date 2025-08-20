@@ -28,6 +28,8 @@ from utils.focus_scheduler import focus_scheduler
 from handlers import start, menu, trackers, focus, checklist, profile, assistant, settings, assistant_onboarding, assistant_plan
 
 from utils.logging import setup_json_logging, get_logger, set_request_id, setup_logging
+from utils.notify import make_notifier
+from utils.firestore_client import create_firestore_client
 
 import signal
 from typing import Optional
@@ -42,19 +44,6 @@ scheduler_task: Optional[asyncio.Task] = None
 setup_json_logging("INFO")
 log = get_logger(__name__)
 log.info("Starting TimeFlow bot")
-
-async def send_notification(user_id: str, message: str) -> None:
-    """Отправка уведомления пользователю через бота."""
-    # TODO: заменить на реальную отправку через bot.send_message
-    logger.info(
-        "Sending notification",
-        extra={
-            "user_id": user_id,
-            "message": message[:50],  # Первые 50 символов для логов
-        }
-    )
-    # В реальности раскомментировать и передать bot:
-    # await bot.send_message(chat_id=user_id, text=message)
 
 def CorrelationMiddleware():
     raise NotImplementedError
@@ -79,9 +68,9 @@ async def main():
         token=config.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
-    
-    db = firestore.Client()
-    pomodoro_service = PomodoroService(db)
+
+    db = create_firestore_client()
+    pomodoro_service = PomodoroService(db) if db else None
 
     # Инициализация диспетчера
     dp = Dispatcher()
@@ -148,23 +137,21 @@ async def main():
         logger.error(f"Ошибка инициализации Focus модуля: {e}", exc_info=True)
         focus_service = None
     
-# Recovery pass при старте
-    logger.info("Running Pomodoro recovery pass")
-    await recovery_pass(
-        service=pomodoro_service,
-        notify=send_notification  # или передать lambda с bot.send_message
-    )
-    
-    # Запуск фонового scheduler
-    shutdown_event = asyncio.Event()
-    scheduler_task = asyncio.create_task(
-        start_scheduler(
-            service=pomodoro_service,
-            notify=send_notification,
-            interval_sec=30,
-            shutdown_event=shutdown_event
+    notify = make_notifier(bot)
+    if pomodoro_service:
+        logger.info("Running Pomodoro recovery pass")
+        await recovery_pass(service=pomodoro_service, notify=notify)
+        shutdown_event = asyncio.Event()
+        scheduler_task = asyncio.create_task(
+            start_scheduler(
+                service=pomodoro_service,
+                notify=notify,
+                interval_sec=30,
+                shutdown_event=shutdown_event,
+            )
         )
-    )
+    else:
+        logger.error("PomodoroService not initialized; skipping scheduler")
     
     # Обработка сигналов для graceful shutdown
     def signal_handler(sig, frame):
