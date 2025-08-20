@@ -3,7 +3,10 @@
 """
 import asyncio
 import logging
+import os
 import sys
+
+from pytest import Config
 from config import BOT_TOKEN
 
 from aiogram import Bot, Dispatcher
@@ -23,16 +26,40 @@ from utils.focus_scheduler import focus_scheduler
 # Импортируем обработчики
 from handlers import start, menu, trackers, focus, checklist, profile, assistant, settings, assistant_onboarding, assistant_plan
 
-from utils.logging import setup_json_logging, get_logger, set_request_id
+from utils.logging import setup_json_logging, get_logger, set_request_id, setup_logging
 
 setup_json_logging("INFO")
 log = get_logger(__name__)
 log.info("Starting TimeFlow bot")
 
+def CorrelationMiddleware():
+    raise NotImplementedError
+
 async def main():
     """
     Основная функция для запуска бота
     """
+    """Основная точка входа приложения."""
+    # Настройка логирования
+    log_level = os.getenv("LOG_LEVEL", "INFO")
+    setup_logging(level=log_level)
+    
+    logger.info("Starting TimeFlow Bot")
+    
+    # Инициализация конфига
+    config = Config()
+    
+    # Инициализация бота
+    bot = Bot(
+        token=config.bot_token,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+    )
+    
+    # Инициализация диспетчера
+    dp = Dispatcher()
+    
+    # Подключение middleware
+    dp.update.middleware(CorrelationMiddleware())
     # Настройка логирования
     logging.basicConfig(
         level=logging.INFO,
