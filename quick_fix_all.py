@@ -1,11 +1,13 @@
 """
 Быстрое решение всех проблем для запуска бота
 """
+
 import subprocess
 import sys
 import os
 
 print("=== БЫСТРОЕ РЕШЕНИЕ ВСЕХ ПРОБЛЕМ ===\n")
+
 
 def run_script(script_name):
     """Запускает Python скрипт"""
@@ -22,6 +24,7 @@ def run_script(script_name):
     except FileNotFoundError:
         print(f"❌ Файл {script_name} не найден")
         return False
+
 
 # 1. Исправляем проблему с Firestore
 print("1️⃣ Настройка работы без Firestore...")
@@ -43,15 +46,15 @@ print("\n4️⃣ Исправление предупреждения aiogram..."
 if os.path.exists("main.py"):
     with open("main.py", "r", encoding="utf-8") as f:
         content = f.read()
-    
+
     if "parse_mode=ParseMode.HTML" in content and "DefaultBotProperties" not in content:
         # Добавляем импорт
         if "from aiogram.client.default import DefaultBotProperties" not in content:
             content = content.replace(
                 "from aiogram.enums import ParseMode",
-                "from aiogram.enums import ParseMode\nfrom aiogram.client.default import DefaultBotProperties"
+                "from aiogram.enums import ParseMode\nfrom aiogram.client.default import DefaultBotProperties",
             )
-        
+
         # Заменяем инициализацию бота
         content = content.replace(
             "bot = Bot(\n        token=BOT_TOKEN,\n        parse_mode=ParseMode.HTML\n    )",
@@ -60,9 +63,9 @@ if os.path.exists("main.py"):
         default=DefaultBotProperties(
             parse_mode=ParseMode.HTML
         )
-    )"""
+    )""",
         )
-        
+
         # Альтернативный вариант без переносов
         content = content.replace(
             "bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)",
@@ -71,16 +74,16 @@ if os.path.exists("main.py"):
         default=DefaultBotProperties(
             parse_mode=ParseMode.HTML
         )
-    )"""
+    )""",
         )
-        
+
         with open("main.py", "w", encoding="utf-8") as f:
             f.write(content)
         print("✅ Предупреждение aiogram исправлено")
     else:
         print("✅ Предупреждение aiogram уже исправлено или отсутствует")
 
-print("\n" + "="*50)
+print("\n" + "=" * 50)
 print("\n🎉 ВСЕ ГОТОВО!\n")
 print("✅ Исправлено:")
 print("• Работа без Firestore (данные в памяти)")
@@ -93,7 +96,7 @@ print("python main.py")
 
 print("\n📱 Доступные функции:")
 print("• 📊 Трекер привычек")
-print("• 🎯 Фокус-сессии") 
+print("• 🎯 Фокус-сессии")
 print("• ✅ Чек-лист задач")
 print("• 👤 Профиль и достижения")
 print("• 🤖 ИИ-ассистент (демо)")

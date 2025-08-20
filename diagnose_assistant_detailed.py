@@ -1,13 +1,16 @@
 """
 Детальная диагностика проблемы с модулем ассистента
 """
+
 import os
 import sys
 import importlib.util
 
+
 def check_file_exists(filepath):
     """Проверяет существование файла"""
     return os.path.exists(filepath)
+
 
 def check_import(module_path):
     """Проверяет возможность импорта модуля"""
@@ -15,12 +18,13 @@ def check_import(module_path):
         spec = importlib.util.spec_from_file_location("test_module", module_path)
         if spec is None:
             return False, "Не удалось загрузить спецификацию модуля"
-        
+
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return True, "OK"
     except Exception as e:
         return False, str(e)
+
 
 print("=== ДИАГНОСТИКА МОДУЛЯ АССИСТЕНТА ===\n")
 
@@ -31,7 +35,7 @@ files_to_check = [
     ("keyboards/assistant.py", "Клавиатуры ассистента"),
     ("states/assistant.py", "Состояния FSM"),
     ("utils/openai_api.py", "API для OpenAI"),
-    ("database/assistant_db.py", "База данных ассистента")
+    ("database/assistant_db.py", "База данных ассистента"),
 ]
 
 missing_files = []
@@ -56,11 +60,11 @@ print("\n3. Проверка обработчика в handlers/menu.py:")
 if check_file_exists("handlers/menu.py"):
     with open("handlers/menu.py", "r", encoding="utf-8") as f:
         content = f.read()
-        
+
     # Проверяем наличие обработчика для кнопки ассистента
     if '"🤖 ИИ-ассистент"' in content or "'🤖 ИИ-ассистент'" in content:
         print("✅ Кнопка '🤖 ИИ-ассистент' найдена в menu.py")
-        
+
         # Проверяем, есть ли обработчик
         if "handle_assistant" in content:
             print("✅ Функция handle_assistant найдена")
@@ -74,13 +78,13 @@ print("\n4. Проверка регистрации в main.py:")
 if check_file_exists("main.py"):
     with open("main.py", "r", encoding="utf-8") as f:
         content = f.read()
-        
+
     # Проверяем импорт
     if "from handlers import" in content and "assistant" in content:
         print("✅ Модуль assistant импортируется в main.py")
     else:
         print("❌ Модуль assistant НЕ импортируется в main.py")
-    
+
     # Проверяем регистрацию роутера
     if "assistant.router" in content:
         print("✅ Роутер assistant.router регистрируется")
@@ -92,13 +96,13 @@ print("\n5. Анализ handlers/assistant.py:")
 if check_file_exists("handlers/assistant.py"):
     with open("handlers/assistant.py", "r", encoding="utf-8") as f:
         content = f.read()
-    
+
     # Проверяем наличие роутера
     if "router = Router()" in content:
         print("✅ Роутер создан")
     else:
         print("❌ Роутер НЕ создан")
-    
+
     # Проверяем наличие обработчиков
     handlers = []
     if '@router.message(F.text == "🤖 ИИ-ассистент")' in content:
@@ -107,7 +111,7 @@ if check_file_exists("handlers/assistant.py"):
         handlers.append("Функция handle_assistant_menu")
     if "@router.callback_query" in content:
         handlers.append("Callback обработчики")
-    
+
     if handlers:
         print("✅ Найдены обработчики:")
         for h in handlers:
@@ -133,12 +137,14 @@ print("4. Перезапустите бота")
 print("\n=== ВЕРСИИ БИБЛИОТЕК ===")
 try:
     import aiogram
+
     print(f"aiogram: {aiogram.__version__}")
 except:
     print("aiogram: не установлен")
 
 try:
     import openai
+
     print(f"openai: {openai.__version__}")
 except:
     print("openai: не установлен (это нормально)")

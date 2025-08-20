@@ -1,222 +1,43 @@
-"""
-Главный файл для запуска телеграм-бота
-"""
 import asyncio
-import logging
 import os
-import sys
-from venv import logger
-
-from pytest import Config
-from config import BOT_TOKEN
 
 from aiogram import Bot, Dispatcher
-from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
-from aiogram.fsm.storage.memory import MemoryStorage
-
-# База данных
-from database.firestore_db import FirestoreDB
-from database.focus_db import FocusDB
-from database.focus_db_memory import FocusDBMemory
-
-# Focus модули
-from services.focus_service import FocusService
-from utils.focus_scheduler import focus_scheduler
-
-# Импортируем обработчики
-from handlers import start, menu, trackers, focus, checklist, profile, assistant, settings, assistant_onboarding, assistant_plan
-
-from utils.logging import setup_json_logging, get_logger, set_request_id, setup_logging
-
-import signal
-from typing import Optional
-from google.cloud import firestore
+from aiogram.enums import ParseMode
 
 from services.pomodoro_service import PomodoroService
 from tasks.pomodoro_recovery import recovery_pass, start_scheduler
+from utils.firestore_client import create_firestore_client
+from utils.logging import get_logger, setup_logging
+from utils.notify import make_notifier
 
-shutdown_event: Optional[asyncio.Event] = None
-scheduler_task: Optional[asyncio.Task] = None
-
-setup_json_logging("INFO")
 log = get_logger(__name__)
-log.info("Starting TimeFlow bot")
 
-async def send_notification(user_id: str, message: str) -> None:
-    """Отправка уведомления пользователю через бота."""
-    # TODO: заменить на реальную отправку через bot.send_message
-    logger.info(
-        "Sending notification",
-        extra={
-            "user_id": user_id,
-            "message": message[:50],  # Первые 50 символов для логов
-        }
-    )
-    # В реальности раскомментировать и передать bot:
-    # await bot.send_message(chat_id=user_id, text=message)
 
-def CorrelationMiddleware():
-    raise NotImplementedError
+async def main() -> None:
+    """Entry point for the TimeFlow bot."""
+    setup_logging(os.getenv("LOG_LEVEL", "INFO"))
 
-async def main():
-    """
-    Основная функция для запуска бота
-    """
-    """Основная точка входа приложения."""
-    global shutdown_event, scheduler_task
-    # Настройка логирования
-    log_level = os.getenv("LOG_LEVEL", "INFO")
-    setup_logging(level=log_level)
-    
-    logger.info("Starting TimeFlow Bot")
-    
-    # Инициализация конфига
-    config = Config()
-    
-    # Инициализация бота
-    bot = Bot(
-        token=config.bot_token,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-    )
-    
-    db = firestore.Client()
-    pomodoro_service = PomodoroService(db)
+    token = os.getenv("BOT_TOKEN")
+    if not token:
+        raise RuntimeError("BOT_TOKEN is not set")
 
-    # Инициализация диспетчера
+    bot = Bot(token=token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
-    
-    # Подключение middleware
-    dp.update.middleware(CorrelationMiddleware())
-    # Настройка логирования
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler('bot.log', encoding='utf-8'),
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
-    logger = logging.getLogger(__name__)
-    
-    # Инициализация бота и диспетчера
-    bot = Bot(
-        token=BOT_TOKEN,
-        default=DefaultBotProperties(
-            parse_mode=ParseMode.HTML
-        )
-    )
-    
-    # Создаем диспетчер с хранилищем состояний в памяти
-    dp = Dispatcher(storage=MemoryStorage())
-    
-    # --- ИНИЦИАЛИЗАЦИЯ FOCUS ---
-    try:
-        logger.info("Инициализация Focus модуля...")
-        
-        # Запускаем планировщик
-        await focus_scheduler.start()
-        logger.info("Focus планировщик запущен")
-        
-        # Создаем БД с обработкой ошибок Firestore
-        try:
-            db = FirestoreDB()
-            focus_db = FocusDB(db.db)
-            logger.info("Focus БД инициализирована с Firestore")
-        except Exception as db_error:
-            logger.warning(f"Не удалось инициализировать Firestore: {db_error}")
-            logger.info("Focus будет работать с данными в памяти (без сохранения)")
-            # Используем in-memory версию БД
-            focus_db = FocusDBMemory()
-        
-        # Создаем сервис с поддержкой обновления UI
-        focus_service = FocusService(focus_db, focus_scheduler, bot)
-        logger.info("FocusService создан с поддержкой обновления UI")
-        
-        # Восстанавливаем активные сессии после перезапуска
-        restored_count = await focus_service.restore_active_sessions()
-        logger.info(f"Восстановлено {restored_count} активных сессий")
-        
-        # 👉 Инъекция сервиса в модуль handlers.focus
-        from handlers import focus as focus_handlers
-        focus_handlers.focus_service = focus_service
-        logger.info("FocusService инъецирован в handlers.focus")
 
-    
-        
-    except Exception as e:
-        logger.error(f"Ошибка инициализации Focus модуля: {e}", exc_info=True)
-        focus_service = None
-    
-# Recovery pass при старте
-    logger.info("Running Pomodoro recovery pass")
-    await recovery_pass(
-        service=pomodoro_service,
-        notify=send_notification  # или передать lambda с bot.send_message
-    )
-    
-    # Запуск фонового scheduler
-    shutdown_event = asyncio.Event()
-    scheduler_task = asyncio.create_task(
-        start_scheduler(
-            service=pomodoro_service,
-            notify=send_notification,
-            interval_sec=30,
-            shutdown_event=shutdown_event
-        )
-    )
-    
-    # Обработка сигналов для graceful shutdown
-    def signal_handler(sig, frame):
-        logger.info(f"Received signal {sig}, initiating shutdown")
-        shutdown_event.set()
-    
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    db = create_firestore_client()
+    service: PomodoroService | None = PomodoroService(db) if db else None
+    notify = make_notifier(bot)
 
-    # --- ПОДКЛЮЧЕНИЕ РОУТЕРОВ ---
-    dp.include_router(start.router)
-    dp.include_router(menu.router)
-    dp.include_router(trackers.router)
-    dp.include_router(focus.router)
-    dp.include_router(checklist.router)
-    dp.include_router(profile.router)
-    dp.include_router(assistant.router)
-    dp.include_router(settings.router)    
-    dp.include_router(assistant_onboarding.router)
-    dp.include_router(assistant_plan.router)
-    
-    # Удаляем вебхуки (если были установлены)
+    if service:
+        await recovery_pass(service=service, notify=notify)
+        asyncio.create_task(start_scheduler(service=service, notify=notify, interval_sec=30))
+    else:
+        log.error("Firestore credentials not provided; skipping scheduler and recovery")
+
     await bot.delete_webhook(drop_pending_updates=True)
-    
-    logger.info("Бот запущен и готов к работе!")
-    
-    try:
-        # Запуск polling или webhook в зависимости от ENV
-        if config.env == "dev":
-            logger.info("Starting in polling mode (dev)")
-            await dp.start_polling(bot)
-        else:
-            logger.info("Starting in webhook mode (prod)")
-            # webhook setup будет здесь
-            pass
-    finally:
-        # Graceful shutdown
-        logger.info("Shutting down...")
-        shutdown_event.set()
-        
-        if scheduler_task and not scheduler_task.done():
-            await scheduler_task
-        
-        await bot.session.close()
-        logger.info("Bot stopped")
+    await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
-    # Запускаем бота
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logging.info("Бот остановлен пользователем")
-    except Exception as e:
-        logging.error(f"Неожиданная ошибка: {e}", exc_info=True)
+    asyncio.run(main())

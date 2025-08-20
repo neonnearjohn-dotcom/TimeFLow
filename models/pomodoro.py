@@ -8,7 +8,7 @@ PomodoroStatus = Literal["active", "done", "notified"]
 @dataclass
 class PomodoroSession:
     """Модель Pomodoro сессии в Firestore."""
-    
+
     user_id: str
     status: PomodoroStatus
     ends_at: datetime  # UTC
@@ -16,7 +16,7 @@ class PomodoroSession:
     version: int = 1  # для идемпотентности
     created_at: Optional[datetime] = None  # UTC
     updated_at: Optional[datetime] = None  # UTC
-    
+
     def to_dict(self) -> dict:
         """Преобразование в dict для Firestore."""
         return {
@@ -28,7 +28,7 @@ class PomodoroSession:
             "created_at": self.created_at or datetime.utcnow(),
             "updated_at": self.updated_at or datetime.utcnow(),
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict, session_id: str = None) -> "PomodoroSession":
         """Создание из dict Firestore."""

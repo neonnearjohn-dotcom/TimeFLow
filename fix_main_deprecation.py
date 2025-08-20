@@ -1,6 +1,7 @@
 """
 Исправление предупреждения о deprecated параметрах в main.py
 """
+
 import os
 import re
 
@@ -16,13 +17,14 @@ with open("main.py", "r", encoding="utf-8") as f:
 
 # Создаем резервную копию
 from datetime import datetime
+
 backup_name = f"main_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.py"
 with open(backup_name, "w", encoding="utf-8") as f:
     f.write(content)
 print(f"✅ Создана резервная копия: {backup_name}")
 
 # Находим строку с Bot(
-bot_pattern = r'bot = Bot\(\s*token=BOT_TOKEN,\s*parse_mode=ParseMode\.HTML\s*\)'
+bot_pattern = r"bot = Bot\(\s*token=BOT_TOKEN,\s*parse_mode=ParseMode\.HTML\s*\)"
 bot_match = re.search(bot_pattern, content, re.MULTILINE | re.DOTALL)
 
 if bot_match:
@@ -34,10 +36,10 @@ if bot_match:
             parse_mode=ParseMode.HTML
         )
     )"""
-    
+
     content = content.replace(old_code, new_code)
     print("✅ Обновлен код инициализации Bot")
-    
+
     # Проверяем импорт DefaultBotProperties
     if "DefaultBotProperties" not in content:
         # Добавляем импорт
