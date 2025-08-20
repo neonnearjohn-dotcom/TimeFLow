@@ -1,7 +1,12 @@
 [tool.black]
 line-length = 100
 target-version = ["py312"]
-exclude = ["venv", ".venv"]
+extend-exclude = '''
+/(
+  venv
+| \.venv
+)/
+'''
 
 [tool.ruff]
 line-length = 100
@@ -15,3 +20,4 @@ ignore = ["E203", "E266"]
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
+asyncio_mode = "auto"

@@ -39,11 +39,14 @@ async def test_recovery_marks_expired_sessions_once(pomodoro_service, mock_notif
         version=1,
     )
     
-    # Мокаем fetch_expired_active
+    # Мокаем fetch_expired_active: сначала просроченная сессия, затем пусто
     with patch.object(
         pomodoro_service,
         "fetch_expired_active",
-        return_value=[(session_id, expired_session)]
+        side_effect=[
+            [(session_id, expired_session)],
+            [],
+        ],
     ) as mock_fetch:
         # Мокаем mark_done_and_notify
         with patch.object(
@@ -53,10 +56,11 @@ async def test_recovery_marks_expired_sessions_once(pomodoro_service, mock_notif
         ) as mock_mark:
             # Запускаем recovery
             processed = await recovery_pass(pomodoro_service, mock_notify)
-            
+
             # Проверки
             assert processed == 1
-            mock_fetch.assert_called_once_with(limit=100)
+            assert mock_fetch.call_count == 2
+            mock_fetch.assert_called_with(limit=100)
             mock_mark.assert_called_once_with(
                 session_id=session_id,
                 notify=mock_notify
