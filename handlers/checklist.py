@@ -24,7 +24,6 @@ from keyboards.checklist import (
 from keyboards.main_menu import get_main_menu_keyboard
 from states.checklist import TaskCreationStates, TaskEditStates
 from utils.messages import ERROR_MESSAGES
-from utils.achievements import POINTS_TABLE
 from handlers.profile import show_new_achievements
 
 # Создаем роутер
@@ -651,7 +650,7 @@ async def complete_task(callback: CallbackQuery):
     task_id = callback.data.split(":")[1]
     
     try:
-        success, points = await checklist_db.complete_task(user_id, task_id)
+        success, _ = await checklist_db.complete_task(user_id, task_id)
         
         if success:
             # Выбираем случайное мотивационное сообщение
@@ -1018,7 +1017,6 @@ async def show_checklist_stats(callback: CallbackQuery):
         
         # Общая статистика
         text += f"• Выполнено задач: {stats.get('total_completed', 0)}\n"
-        text += f"• Заработано очков: {stats.get('total_points', 0)}\n"
         text += f"• Текущая серия: {stats.get('current_streak', 0)} дней\n"
         text += f"• Лучшая серия: {stats.get('best_streak', 0)} дней\n\n"
         

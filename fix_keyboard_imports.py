@@ -72,12 +72,10 @@ def test_keyboards():
     try:
         from keyboards.profile import (
             profile_menu_kb,
-            achievements_menu_kb,
-            points_history_kb
+            achievements_menu_kb
         )
         kb1 = profile_menu_kb()
         kb2 = achievements_menu_kb()
-        kb3 = points_history_kb()
         success.append("✅ profile.py - OK")
     except ImportError as e:
         errors.append(f"❌ profile.py - {e}")

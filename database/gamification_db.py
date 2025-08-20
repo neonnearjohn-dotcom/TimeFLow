@@ -2,16 +2,16 @@
 Функции для работы с геймификацией в Firestore
 """
 from google.cloud import firestore
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Any
 from datetime import datetime, date
 import logging
-from utils.achievements import ACHIEVEMENTS, POINTS_TABLE, check_achievements_for_user
+from utils.achievements import ACHIEVEMENTS, check_achievements_for_user
 
 logger = logging.getLogger(__name__)
 
 
 class GamificationDB:
-    """Класс для работы с очками и достижениями в Firestore"""
+    """Класс для работы с достижениями в Firestore"""
     
     def __init__(self, db: firestore.Client):
         """
@@ -22,143 +22,33 @@ class GamificationDB:
         """
         self.db = db
     
-    # === ОЧКИ ===
-    
-    async def add_points(self, telegram_id: int, points: int, reason: str, 
-                        details: Optional[Dict] = None) -> Tuple[bool, int]:
-        """
-        Начисляет очки пользователю
-        
-        Args:
-            telegram_id: ID пользователя
-            points: Количество очков
-            reason: Причина начисления
-            details: Дополнительные детали
-            
-        Returns:
-            (success, new_balance)
-        """
-        try:
-            user_ref = self.db.collection('users').document(str(telegram_id))
-            
-            # Получаем текущий баланс
-            user_doc = user_ref.get()
-            if user_doc.exists:
-                current_balance = user_doc.to_dict().get('points_balance', 0)
-            else:
-                current_balance = 0
-            
-            new_balance = current_balance + points
-            
-            # Обновляем баланс
-            user_ref.update({
-                'points_balance': new_balance,
-                'total_points_earned': firestore.Increment(points)
-            })
-            
-            # Сохраняем в историю
-            history_data = {
-                'points': points,
-                'reason': reason,
-                'timestamp': datetime.utcnow(),
-                'balance_after': new_balance
-            }
-            if details:
-                history_data['details'] = details
-            
-            user_ref.collection('points_history').add(history_data)
-            
-            logger.info(f"Начислено {points} очков пользователю {telegram_id}. Новый баланс: {new_balance}")
-            return True, new_balance
-            
-        except Exception as e:
-            logger.error(f"Ошибка при начислении очков: {e}")
-            return False, 0
-    
-    async def get_points_balance(self, telegram_id: int) -> int:
-        """
-        Получает текущий баланс очков пользователя
-        """
-        try:
-            user_ref = self.db.collection('users').document(str(telegram_id))
-            user_doc = user_ref.get()
-            
-            if user_doc.exists:
-                return user_doc.to_dict().get('points_balance', 0)
-            return 0
-            
-        except Exception as e:
-            logger.error(f"Ошибка при получении баланса: {e}")
-            return 0
-    
-    async def get_points_history(self, telegram_id: int, limit: int = 10) -> List[Dict]:
-        """
-        Получает историю начисления очков
-        """
-        try:
-            user_ref = self.db.collection('users').document(str(telegram_id))
-            
-            history = user_ref.collection('points_history')\
-                .order_by('timestamp', direction=firestore.Query.DESCENDING)\
-                .limit(limit)\
-                .stream()
-            
-            history_list = []
-            for record in history:
-                history_list.append(record.to_dict())
-            
-            return history_list
-            
-        except Exception as e:
-            logger.error(f"Ошибка при получении истории очков: {e}")
-            return []
-    
     # === ДОСТИЖЕНИЯ ===
     
-    async def unlock_achievement(self, telegram_id: int, achievement_id: str) -> Tuple[bool, int]:
-        """
-        Разблокирует достижение для пользователя
-        
-        Returns:
-            (success, points_earned)
-        """
+    async def unlock_achievement(self, telegram_id: int, achievement_id: str) -> bool:
+        """Разблокирует достижение для пользователя"""
         try:
             if achievement_id not in ACHIEVEMENTS:
-                return False, 0
-            
-            achievement = ACHIEVEMENTS[achievement_id]
-            points = achievement['points']
-            
+                return False
+
             user_ref = self.db.collection('users').document(str(telegram_id))
-            
-            # Добавляем достижение
+
             achievement_data = {
                 'achievement_id': achievement_id,
-                'unlocked_at': datetime.utcnow(),
-                'points_earned': points
+                'unlocked_at': datetime.utcnow()
             }
-            
+
             user_ref.collection('achievements').document(achievement_id).set(achievement_data)
-            
-            # Начисляем очки за достижение
-            success, _ = await self.add_points(
-                telegram_id, 
-                points, 
-                'achievement_unlocked',
-                {'achievement_id': achievement_id}
-            )
-            
-            # Обновляем счетчик достижений
+
             user_ref.update({
                 'achievements_count': firestore.Increment(1)
             })
-            
+
             logger.info(f"Достижение {achievement_id} разблокировано для пользователя {telegram_id}")
-            return True, points
-            
+            return True
+
         except Exception as e:
             logger.error(f"Ошибка при разблокировке достижения: {e}")
-            return False, 0
+            return False
     
     async def get_user_achievements(self, telegram_id: int) -> List[Dict]:
         """
@@ -210,7 +100,7 @@ class GamificationDB:
             # Разблокируем новые
             unlocked_now = []
             for ach_id in new_achievements:
-                success, _ = await self.unlock_achievement(telegram_id, ach_id)
+                success = await self.unlock_achievement(telegram_id, ach_id)
                 if success:
                     unlocked_now.append(ach_id)
             
@@ -241,8 +131,6 @@ class GamificationDB:
                 'username': user_data.get('username') or 'Пользователь',
                 'full_name': user_data.get('full_name') or 'Без имени',
                 'created_at': user_data.get('created_at'),
-                'points_balance': user_data.get('points_balance', 0),
-                'total_points_earned': user_data.get('total_points_earned', 0),
                 'achievements_count': user_data.get('achievements_count', 0)
             }
             
@@ -372,12 +260,12 @@ class GamificationDB:
             actions = []
             user_ref = self.db.collection('users').document(str(telegram_id))
             
-            # Получаем последние записи из истории очков
+            # Получаем последние записи из истории действий
             points_history = user_ref.collection('points_history')\
                 .order_by('timestamp', direction=firestore.Query.DESCENDING)\
                 .limit(limit)\
                 .stream()
-            
+
             for record in points_history:
                 data = record.to_dict()
                 reason = data.get('reason', '')
@@ -393,7 +281,6 @@ class GamificationDB:
                 
                 action = {
                     'name': action_names.get(reason, 'Действие'),
-                    'points': data.get('points', 0),
                     'timestamp': data.get('timestamp')
                 }
                 
@@ -441,7 +328,7 @@ class GamificationDB:
             ach_doc = user_ref.collection('achievements').document(achievement_id).get()
             
             if not ach_doc.exists:
-                success, _ = await self.unlock_achievement(telegram_id, achievement_id)
+                success = await self.unlock_achievement(telegram_id, achievement_id)
                 return success
             
             return False

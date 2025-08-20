@@ -21,7 +21,6 @@ from keyboards.tracker import (
 from keyboards.main_menu import get_main_menu_keyboard
 from states.tracker import HabitCreationStates, BadHabitStates
 from utils.messages import ERROR_MESSAGES
-from utils.achievements import POINTS_TABLE
 from handlers.profile import show_new_achievements
 
 # Создаем роутер
@@ -512,23 +511,6 @@ async def complete_habit(callback: CallbackQuery):
             # Получаем информацию о привычке
             habit = await tracker_db.get_habit(user_id, habit_id)
             habit_name = habit.get('name', 'Привычка')
-            
-            # Начисляем очки
-            await gamification_db.add_points(
-                user_id, 
-                POINTS_TABLE['habit_completed'],
-                'habit_completed',
-                {'habit_id': habit_id, 'habit_name': habit_name}
-            )
-            
-            # Бонус за новый день streak
-            if new_streak > 1:
-                await gamification_db.add_points(
-                    user_id,
-                    POINTS_TABLE['habit_streak_bonus'],
-                    'habit_streak_bonus',
-                    {'habit_id': habit_id, 'streak': new_streak}
-                )
             
             # Обновляем сообщение
             await callback.message.edit_text(

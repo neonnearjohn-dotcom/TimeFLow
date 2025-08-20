@@ -128,9 +128,9 @@ class ChecklistDB:
     async def complete_task(self, telegram_id: int, task_id: str) -> Tuple[bool, int]:
         """
         Отмечает задачу как выполненную
-        
+
         Returns:
-            (success, points_earned)
+            (success, 0)
         """
         try:
             user_ref = self.db.collection('users').document(str(telegram_id))
@@ -155,12 +155,11 @@ class ChecklistDB:
             # Добавляем в историю выполненных
             completed_data = task_data.copy()
             completed_data['completed_at'] = datetime.utcnow()
-            completed_data['points_earned'] = points
             
             user_ref.collection('completed_tasks').add(completed_data)
             
             # Обновляем статистику
-            await self._update_user_stats(telegram_id, task_data.get('priority'), points)
+            await self._update_user_stats(telegram_id, task_data.get('priority'))
             
             return True, points
         except Exception as e:
@@ -233,7 +232,6 @@ class ChecklistDB:
             # Дефолтные значения
             default_stats = {
                 'total_completed': 0,
-                'total_points': 0,
                 'current_streak': 0,
                 'best_streak': 0,
                 'last_completion_date': None,
@@ -278,7 +276,7 @@ class ChecklistDB:
             logger.error(f"Ошибка при получении истории: {e}")
             return []
     
-    async def _update_user_stats(self, telegram_id: int, priority: str, points: int):
+    async def _update_user_stats(self, telegram_id: int, priority: str):
         """
         Обновляет статистику пользователя
         """
@@ -290,7 +288,6 @@ class ChecklistDB:
             
             # Обновляем общие показатели
             stats['total_completed'] += 1
-            stats['total_points'] += points
             
             # Обновляем по приоритету
             if priority in stats['completed_by_priority']:

@@ -131,8 +131,6 @@ async def cmd_start(message: Message, state: FSMContext):
                 'username': message.from_user.username,
                 'full_name': user_name,
                 'onboarding_completed': False,
-                'points_balance': 0,
-                'total_points_earned': 0,
                 'achievements_count': 0
             }
             

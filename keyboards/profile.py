@@ -16,9 +16,6 @@ def get_profile_menu_keyboard() -> InlineKeyboardMarkup:
         InlineKeyboardButton(text="🏆 Достижения", callback_data="view_achievements")
     )
     builder.row(
-        InlineKeyboardButton(text="💰 История очков", callback_data="points_history")
-    )
-    builder.row(
         InlineKeyboardButton(text="📊 Статистика", callback_data="detailed_stats")
     )
     builder.row(
